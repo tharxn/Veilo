@@ -1,0 +1,25 @@
+{
+  "name": "veilo-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "On-device PII and secret redaction browser extension for AI chatbots",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "playwright test",
+    "eval": "npm run eval --workspace=packages/eval",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "mock": "node tests/serve-mock.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.43.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

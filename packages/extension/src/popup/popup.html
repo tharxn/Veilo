@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Veilo</title>
+  <style>
+    @font-face { font-family: VeiloInter; src: url("fonts/InterVariable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+    * { box-sizing: border-box; }
+    :root { color-scheme: light; --bg:#f3ebdb; --panel:#faf5ea; --raised:#e8dec9; --line:#d3c5a8; --ink:#2a2118; --muted:#6b5d4b; --accent:#b9502b; --accent-ink:#fff; --bar:#2a2118; --on-bar:#f3ebdb; --focus:#9e4323; }
+    body[data-theme="developer"] { color-scheme: dark; --bg:#211b15; --panel:#2b241c; --raised:#3a3027; --line:#43382d; --ink:#f3ebdb; --muted:#b3a58f; --accent:#e0784a; --accent-ink:#1f140c; --bar:#14100c; --on-bar:#f3ebdb; --focus:#ee9a73; }
+    body { width: 360px; margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 VeiloInter, Inter, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; transition: background .18s ease, color .18s ease; }
+    .shell { padding: 16px 18px 15px; }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: center; gap: 9px; font-size: 17px; font-weight: 650; letter-spacing: -.025em; }
+    .brand img { display: block; width: 28px; height: 28px; }
+    .switch-wrap { display: flex; align-items: center; gap: 9px; }
+    .state { min-width: 25px; color: var(--muted); font-size: 12px; font-weight: 650; }
+    .switch { position: relative; display: inline-flex; width: 42px; height: 24px; }
+    .switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .track { position: absolute; inset: 0; border: 1px solid var(--muted); border-radius: 99px; background: var(--raised); cursor: pointer; transition: background .18s ease, border-color .18s ease; }
+    .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--bg); transition: transform .18s ease; }
+    .switch input:checked + .track { border-color: var(--accent); background: var(--accent); }
+    .switch input:checked + .track::after { transform: translateX(18px); background: var(--accent-ink); }
+    .switch input:focus-visible + .track, input[type="radio"]:focus-visible + .theme-card { outline: 2px solid var(--focus); outline-offset: 3px; }
+    .switch input:disabled + .track { opacity: .6; cursor: wait; }
+    .section { padding: 15px 0; border-bottom: 1px solid var(--line); }
+    .section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    h1, h2 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -.015em; }
+    p { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+    .theme-options { display: grid; gap: 8px; margin-top: 11px; }
+    .theme-choice { position: relative; display: block; cursor: pointer; }
+    .theme-choice input { position: absolute; opacity: 0; pointer-events: none; }
+    .theme-card { display: block; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); transition: border-color .15s ease, background .15s ease; }
+    .theme-choice input:checked + .theme-card { border-color: var(--accent); background: var(--raised); }
+    .theme-title { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 650; }
+    .theme-title::after { content: ""; width: 9px; height: 9px; border: 1px solid var(--muted); border-radius: 50%; }
+    .theme-choice input:checked + .theme-card .theme-title::after { border: 3px solid var(--accent); background: var(--panel); }
+    .theme-card p { margin-top: 2px; font-size: 11.5px; }
+    .foot { padding-top: 11px; color: var(--muted); font-size: 11px; }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="top">
+      <div class="brand"><img src="icons/veilo-32.png" alt=""><span>Veilo</span></div>
+      <div class="switch-wrap">
+        <span class="state" id="protection-label">On</span>
+        <label class="switch" aria-label="Turn Veilo protection on or off">
+          <input id="protection-toggle" type="checkbox" role="switch" checked>
+          <span class="track"></span>
+        </label>
+      </div>
+    </header>
+    <section class="section" aria-labelledby="status-heading">
+      <div class="section-head">
+        <h1 id="status-heading">On-page status</h1>
+        <label class="switch" aria-label="Show or hide Veilo's on-page status toast">
+          <input id="toast-toggle" type="checkbox" role="switch" checked>
+          <span class="track"></span>
+        </label>
+      </div>
+      <p id="status-description">Show a small protection indicator on supported AI chat pages.</p>
+    </section>
+    <section class="section" aria-labelledby="theme-heading">
+      <h2 id="theme-heading">Theme</h2>
+      <p>Choose how Veilo looks in its popup and on AI chat pages.</p>
+      <div class="theme-options">
+        <label class="theme-choice">
+          <input type="radio" name="theme" value="everyday" checked>
+          <span class="theme-card"><span class="theme-title">Everyday</span><p>Warm, clear colors for everyday browsing.</p></span>
+        </label>
+        <label class="theme-choice">
+          <input type="radio" name="theme" value="developer">
+          <span class="theme-card"><span class="theme-title">Developer</span><p>Deep, warm dark colors for coding and technical work.</p></span>
+        </label>
+      </div>
+    </section>
+    <div class="foot" id="save-state" aria-live="polite">Settings apply to supported AI sites</div>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

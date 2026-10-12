@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mock Gemini - Veilo Test Harness</title>
+  <style>
+    body { background:#131314; color:#eee; font-family:system-ui,sans-serif; margin:0; display:flex; flex-direction:column; height:100vh; }
+    .header { padding:14px 20px; background:#1e1e1e; border-bottom:1px solid #333; font-weight:700; }
+    .server-inspector { background:#0f172a; border:1px solid #1e293b; border-radius:10px; padding:12px 16px; margin:16px 20px 0; }
+    .inspector-label { font-size:12px; font-weight:700; color:#38bdf8; margin-bottom:6px; }
+    #sent-payload-log { font-family:monospace; font-size:13px; background:#020617; padding:8px 12px; border-radius:6px; min-height:20px; }
+    #chat-messages { flex:1; overflow-y:auto; padding:20px; }
+    .message { padding:12px 16px; border-radius:12px; margin-bottom:12px; }
+    .assistant { background:#1e1e1e; border:1px solid #2f2f2f; }
+    .input-area { max-width:768px; margin:0 auto 20px; width:100%; padding:0 16px; box-sizing:border-box; display:flex; gap:12px; align-items:center; }
+    .ql-editor { flex:1; background:#2f2f2f; min-height:40px; padding:10px; border-radius:12px; color:#fff; }
+  </style>
+</head>
+<body>
+  <div class="header">Gemini Mock - Veilo Test Harness</div>
+  <div class="server-inspector">
+    <div class="inspector-label">Network Payload Inspector</div>
+    <div id="sent-payload-log">Waiting for prompt submission...</div>
+  </div>
+  <div id="chat-messages"></div>
+  <div class="input-area">
+    <rich-textarea>
+      <div class="ql-editor textarea" contenteditable="true" role="textbox" aria-label="Enter a prompt"></div>
+    </rich-textarea>
+    <button type="button" class="send-button" aria-label="Send message" id="send-btn">↑</button>
+  </div>
+  <script>
+    const composer = document.querySelector('.ql-editor');
+    const chatMessages = document.getElementById('chat-messages');
+    const sentLog = document.getElementById('sent-payload-log');
+
+    function handleSend() {
+      const text = composer.innerText || composer.textContent || '';
+      if (!text.trim()) return;
+      sentLog.textContent = text;
+      const assistantMsg = document.createElement('div');
+      assistantMsg.className = 'message assistant markdown';
+      assistantMsg.setAttribute('data-message-author-role', 'assistant');
+      const wrap = document.createElement('message-content');
+      wrap.textContent = 'Received prompt: ' + text;
+      assistantMsg.appendChild(wrap);
+      chatMessages.appendChild(assistantMsg);
+      composer.textContent = '';
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) handleSend();
+    }, true);
+    window.addEventListener('click', (e) => {
+      const btn = e.target && e.target.closest && e.target.closest('.send-button, #send-btn');
+      if (btn) handleSend();
+    }, true);
+  </script>
+</body>
+</html>

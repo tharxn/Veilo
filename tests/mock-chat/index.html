@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mock ChatGPT - Veilo Test Harness</title>
+  <style>
+    body {
+      background-color: #171717;
+      color: #ececec;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    .header {
+      padding: 14px 20px;
+      background: #212121;
+      border-bottom: 1px solid #2f2f2f;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-title {
+      font-weight: 700;
+      font-size: 15px;
+      color: #f5f5f5;
+    }
+    .server-inspector {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin: 16px 20px 0 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .inspector-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #38bdf8;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #sent-payload-log {
+      font-family: monospace;
+      font-size: 13px;
+      color: #e2e8f0;
+      background: #020617;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #1e293b;
+      word-break: break-all;
+      min-height: 20px;
+    }
+    .chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-width: 768px;
+      margin: 0 auto;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .message {
+      padding: 12px 16px;
+      border-radius: 12px;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+    .message.user {
+      background: #2f2f2f;
+      align-self: flex-end;
+      max-width: 85%;
+      color: #fff;
+    }
+    .message.assistant {
+      background: #212121;
+      border: 1px solid #2f2f2f;
+      align-self: flex-start;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .composer-container {
+      max-width: 768px;
+      margin: 0 auto 20px auto;
+      width: 100%;
+      padding: 0 16px;
+      box-sizing: border-box;
+    }
+    .composer-box {
+      background: #2f2f2f;
+      border-radius: 16px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid #3e3e3e;
+    }
+    #prompt-textarea {
+      flex: 1;
+      min-height: 24px;
+      max-height: 200px;
+      outline: none;
+      color: #fff;
+      font-size: 15px;
+    }
+    #prompt-textarea[contenteditable]:empty::before {
+      content: "Message ChatGPT...";
+      color: #8e8e93;
+    }
+    .send-btn {
+      background: #ffffff;
+      color: #000000;
+      border: none;
+      border-radius: 9999px;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .send-btn:hover {
+      background: #e5e5e5;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span class="header-title">ChatGPT Mock - Veilo Test Harness</span>
+  </div>
+
+  <!-- Visible Server Inspector Panel showing raw network payload -->
+  <div class="server-inspector">
+    <div class="inspector-label">📡 Network Payload Inspector (What ChatGPT Server Receives)</div>
+    <div id="sent-payload-log">Waiting for prompt submission...</div>
+  </div>
+
+  <div class="chat-container" id="chat-messages"></div>
+
+  <div class="composer-container">
+    <div class="composer-box">
+      <div id="prompt-textarea" contenteditable="true" tabindex="0"></div>
+      <input id="attachment-input" type="file" aria-label="Upload a file">
+      <button class="send-btn" aria-label="Send prompt" id="send-btn">↑</button>
+    </div>
+  </div>
+
+  <script>
+    const composer = document.getElementById('prompt-textarea');
+    const sendBtn = document.getElementById('send-btn');
+    const chatMessages = document.getElementById('chat-messages');
+    const sentLog = document.getElementById('sent-payload-log');
+    const attachmentInput = document.getElementById('attachment-input');
+
+    // Exposes whether the site's upload handler receives the replayed file.
+    attachmentInput.addEventListener('change', () => {
+      const files = Array.from(attachmentInput.files || []);
+      if (files.length) sentLog.textContent = `Uploaded: ${files.map(file => file.name).join(', ')}`;
+    });
+
+    function handleSend() {
+      const text = composer.innerText || composer.textContent || '';
+      if (!text.trim()) return;
+
+      // Update Network Inspector display
+      sentLog.textContent = text;
+
+      // Add user message bubble
+      const userMsg = document.createElement('div');
+      userMsg.className = 'message user';
+      userMsg.setAttribute('data-message-author-role', 'user');
+      userMsg.textContent = text;
+      chatMessages.appendChild(userMsg);
+
+      // Clear composer
+      composer.textContent = '';
+
+      // Simulate streaming AI assistant reply
+      const assistantMsg = document.createElement('div');
+      assistantMsg.className = 'message assistant markdown';
+      assistantMsg.setAttribute('data-message-author-role', 'assistant');
+      chatMessages.appendChild(assistantMsg);
+
+      const replyText = "Received prompt: " + text;
+      const chunks = replyText.split(' ');
+      let idx = 0;
+
+      const interval = setInterval(() => {
+        if (idx < chunks.length) {
+          assistantMsg.textContent += (idx === 0 ? '' : ' ') + chunks[idx];
+          idx++;
+        } else {
+          clearInterval(interval);
+        }
+      }, 40);
+    }
+
+    sendBtn.addEventListener('click', handleSend);
+    composer.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    });
+  </script>
+</body>
+</html>

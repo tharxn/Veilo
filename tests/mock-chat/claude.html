@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mock Claude - Veilo Test Harness</title>
+  <style>
+    body { background:#1a1a1a; color:#eee; font-family:system-ui,sans-serif; margin:0; display:flex; flex-direction:column; height:100vh; }
+    .header { padding:14px 20px; background:#222; border-bottom:1px solid #333; font-weight:700; }
+    .server-inspector { background:#0f172a; border:1px solid #1e293b; border-radius:10px; padding:12px 16px; margin:16px 20px 0; }
+    .inspector-label { font-size:12px; font-weight:700; color:#38bdf8; margin-bottom:6px; }
+    #sent-payload-log { font-family:monospace; font-size:13px; background:#020617; padding:8px 12px; border-radius:6px; min-height:20px; }
+    #chat-messages { flex:1; overflow-y:auto; padding:20px; }
+    .message { padding:12px 16px; border-radius:12px; margin-bottom:12px; }
+    .assistant { background:#212121; border:1px solid #2f2f2f; }
+    fieldset { border:0; max-width:768px; margin:0 auto 20px; width:100%; padding:0 16px; box-sizing:border-box; display:flex; gap:12px; align-items:center; }
+    .ProseMirror { flex:1; background:#2f2f2f; min-height:40px; padding:10px; border-radius:12px; color:#fff; }
+  </style>
+</head>
+<body>
+  <div class="header">Claude Mock - Veilo Test Harness</div>
+  <div class="server-inspector">
+    <div class="inspector-label">Network Payload Inspector</div>
+    <div id="sent-payload-log">Waiting for prompt submission...</div>
+  </div>
+  <div id="chat-messages"></div>
+  <fieldset>
+    <div class="ProseMirror" contenteditable="true" role="textbox" id="prompt-textarea"></div>
+    <button type="button" aria-label="Send message" id="send-btn">↑</button>
+  </fieldset>
+  <script>
+    const composer = document.querySelector('div.ProseMirror');
+    const sendBtn = document.getElementById('send-btn');
+    const chatMessages = document.getElementById('chat-messages');
+    const sentLog = document.getElementById('sent-payload-log');
+
+    function handleSend() {
+      const text = composer.innerText || composer.textContent || '';
+      if (!text.trim()) return;
+      sentLog.textContent = text;
+      const assistantMsg = document.createElement('div');
+      assistantMsg.className = 'message assistant markdown font-claude-message';
+      assistantMsg.setAttribute('data-message-author-role', 'assistant');
+      assistantMsg.setAttribute('data-testid', 'assistant-message');
+      chatMessages.appendChild(assistantMsg);
+      assistantMsg.textContent = 'Received prompt: ' + text;
+      composer.textContent = '';
+    }
+
+    // Aggressive MAIN-world capture listeners (mirrors Claude.ai).
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) handleSend();
+    }, true);
+    window.addEventListener('click', (e) => {
+      const btn = e.target && e.target.closest && e.target.closest('#send-btn, button[aria-label="Send message"]');
+      if (btn) handleSend();
+    }, true);
+  </script>
+</body>
+</html>
