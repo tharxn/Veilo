@@ -22,6 +22,9 @@ labelOptions.innerHTML = [...new Set(DETECTION_LABELS.map(label => label.group))
 
 function render(): void {
   document.documentElement.dataset.theme = preferences.theme;
+  document.querySelector<HTMLImageElement>('footer img')!.src = preferences.theme === 'developer'
+    ? 'icons/veilo-32.png'
+    : 'icons/veilo-light-32.png';
   document.querySelector<HTMLInputElement>('#protection-toggle')!.checked = preferences.protectionEnabled;
   document.querySelector<HTMLInputElement>('#toast-toggle')!.checked = preferences.showStatusToast;
   document.querySelector('#protection-description')!.textContent = preferences.protectionEnabled

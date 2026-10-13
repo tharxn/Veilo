@@ -1,5 +1,6 @@
 import { DetectionEngine } from '@veilo/engine';
 import { AttachmentWarning, AttachmentFinding } from '../ui/attachmentWarning';
+import { PS_CHANNEL } from './protocol';
 
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 const MAX_TEXT_BYTES = 10 * 1024 * 1024;
@@ -31,19 +32,32 @@ const BINARY_FORMAT_EXTENSIONS = new Set([
 
 type AttachmentKind = 'image' | 'text' | 'unsupported';
 
+interface PendingSelection {
+  files: File[];
+  settled: boolean;
+  complete: (allow: boolean) => void;
+  finishChoice?: () => void;
+}
+
 /** Keeps selected attachments inside the extension until local inspection completes. */
 export class AttachmentGuard {
   private readonly watchedInputs = new WeakSet<HTMLInputElement>();
   private readonly observedRoots = new WeakSet<Node>();
-  private readonly replayCounts = new WeakMap<HTMLInputElement, number>();
   private readonly inputPlacement = new WeakMap<HTMLInputElement, { parent: Node; nextSibling: Node | null }>();
   private busyCount = 0;
   private enabled = true;
   private disabledTypes = new Set<string>();
+  private attached = false;
+  private readonly selectionQueue: PendingSelection[] = [];
+  private readonly mainSelections = new Map<string, PendingSelection>();
+  private activeSelection: PendingSelection | null = null;
 
   constructor(private readonly warning: AttachmentWarning) {}
 
   public attach(): void {
+    if (this.attached) return;
+    this.attached = true;
+    window.addEventListener('message', event => this.onPageUpload(event));
     this.watchRoot(document);
   }
 
@@ -90,15 +104,48 @@ export class AttachmentGuard {
     input.addEventListener('input', event => void this.onFilesSelected(event), true);
   }
 
-  private async onFilesSelected(event: Event): Promise<void> {
+  private onPageUpload(event: MessageEvent): void {
+    if (event.source !== window) return;
+    const data = event.data as {
+      channel?: string; dir?: string; type?: string;
+      requestId?: string; files?: File[];
+    } | null;
+    if (!data || data.channel !== PS_CHANNEL || data.dir !== 'main-to-iso' || typeof data.requestId !== 'string') return;
+    const requestId = data.requestId;
+
+    if (data.type === 'file-upload-expired' || data.type === 'file-upload-replay-failed') {
+      const pending = this.mainSelections.get(requestId);
+      pending?.complete(false);
+      if (!pending || this.activeSelection === pending) {
+        this.warning.showBlocked(data.type === 'file-upload-expired'
+          ? 'Image or file inspection took too long. Nothing was shared. Choose the attachment again to retry.'
+          : 'Veilo could not return the inspected attachment to the chat. Nothing was shared. Choose the attachment again to retry.');
+      }
+      return;
+    }
+    if (data.type !== 'file-upload-selected' || this.mainSelections.has(requestId)) return;
+    const respond = (allow: boolean): void => {
+      this.mainSelections.delete(requestId);
+      window.postMessage({ channel: PS_CHANNEL, dir: 'iso-to-main', type: 'file-upload-decision', requestId, allow }, '*');
+    };
+    if (!this.enabled) {
+      respond(true);
+      return;
+    }
+    if (!Array.isArray(data.files) || !data.files.length || !data.files.every(file => file instanceof File)) {
+      respond(false);
+      this.warning.showBlocked('Veilo could not read the selected attachment. Nothing was shared. Choose the attachment again to retry.');
+      return;
+    }
+    const selection = this.queueSelection(data.files, respond);
+    this.mainSelections.set(requestId, selection);
+  }
+
+  private onFilesSelected(event: Event): void {
     if (!this.enabled) return;
     const input = event.currentTarget;
     if (!(input instanceof HTMLInputElement) || input.type !== 'file') return;
-    const replayCount = this.replayCounts.get(input) || 0;
-    if (replayCount > 0) {
-      this.replayCounts.set(input, replayCount - 1);
-      return;
-    }
+    if (input.hasAttribute('data-veilo-upload-replay')) return;
     const files = Array.from(input.files || []);
     if (!files.length) return;
 
@@ -108,17 +155,49 @@ export class AttachmentGuard {
     event.stopPropagation();
     event.stopImmediatePropagation();
     input.value = '';
+    this.queueSelection(files, allow => {
+      if (allow) this.replayFiles(input, files);
+    });
+  }
+
+  private queueSelection(files: File[], respond: (allow: boolean) => void): PendingSelection {
+    const selection: PendingSelection = {
+      files, settled: false,
+      complete: allow => {
+        if (selection.settled) return;
+        selection.settled = true;
+        respond(allow);
+        selection.finishChoice?.();
+      },
+    };
+    this.selectionQueue.push(selection);
+    // Schedule after onPageUpload has recorded its request ID. Serializing
+    // pickers prevents a second upload from replacing the first decision UI.
+    queueMicrotask(() => void this.inspectNextSelection());
+    return selection;
+  }
+
+  private async inspectNextSelection(): Promise<void> {
+    if (this.activeSelection) return;
+    let selection: PendingSelection | undefined;
+    do {
+      selection = this.selectionQueue.shift();
+    } while (selection?.settled);
+    if (!selection) return;
+    this.activeSelection = selection;
+    const { files } = selection;
     this.busyCount += 1;
     try {
       const kinds = files.map(file => this.classify(file));
       const unsupportedCount = kinds.filter(kind => kind === 'unsupported').length;
       if (unsupportedCount === files.length) {
-        this.warning.showUnsupported(unsupportedCount, sendAnyway => {
-          if (sendAnyway) this.replayFiles(input, files);
+        await this.waitForChoice(selection, onChoice => {
+          this.warning.showUnsupported(unsupportedCount, onChoice);
         });
         return;
       }
       if (files.some((file, index) => kinds[index] !== 'unsupported' && file.size > (kinds[index] === 'image' ? MAX_IMAGE_BYTES : MAX_TEXT_BYTES))) {
+        selection.complete(false);
         this.warning.showBlocked('This attachment is too large for local inspection. It was blocked and was not shared.');
         return;
       }
@@ -129,6 +208,7 @@ export class AttachmentGuard {
 
       const findings = new Map<string, number>();
       for (let index = 0; index < files.length; index += 1) {
+        if (selection.settled) return;
         const file = files[index];
         if (kinds[index] === 'image') {
           await this.inspectImage(file, findings);
@@ -136,25 +216,37 @@ export class AttachmentGuard {
           await this.inspectTextFile(file, findings);
         }
       }
+      if (selection.settled) return;
 
       const findingRows = this.toFindings(findings);
       if (findingRows.length) {
-        this.warning.showFindings(findingRows, sendAnyway => {
-          if (sendAnyway) this.replayFiles(input, files);
-        }, loadingKind, unsupportedCount);
+        await this.waitForChoice(selection, onChoice => {
+          this.warning.showFindings(findingRows, onChoice, loadingKind, unsupportedCount);
+        });
       } else if (unsupportedCount) {
-        this.warning.showUnsupported(unsupportedCount, sendAnyway => {
-          if (sendAnyway) this.replayFiles(input, files);
-        }, files.length);
+        await this.waitForChoice(selection, onChoice => {
+          this.warning.showUnsupported(unsupportedCount, onChoice, files.length);
+        });
       } else {
         this.warning.hideLoading();
-        this.replayFiles(input, files);
+        selection.complete(true);
       }
     } catch {
+      selection.complete(false);
       this.warning.showBlocked('Veilo could not finish inspecting this attachment. It was blocked and was not shared. Try a supported image or text-based file, then retry.');
     } finally {
       this.busyCount = Math.max(0, this.busyCount - 1);
+      this.activeSelection = null;
+      void this.inspectNextSelection();
     }
+  }
+
+  private waitForChoice(selection: PendingSelection, show: (onChoice: (allow: boolean) => void) => void): Promise<void> {
+    if (selection.settled) return Promise.resolve();
+    return new Promise(resolve => {
+      selection.finishChoice = resolve;
+      show(allow => selection.complete(allow));
+    });
   }
 
   private classify(file: File): AttachmentKind {
@@ -265,16 +357,19 @@ export class AttachmentGuard {
         return;
       }
     }
+    const previousMarker = input.getAttribute('data-veilo-upload-replay');
     try {
       const transfer = new DataTransfer();
       files.forEach(file => transfer.items.add(file));
       input.files = transfer.files;
-      this.replayCounts.set(input, 2);
+      input.setAttribute('data-veilo-upload-replay', 'isolated');
       input.dispatchEvent(new Event('input', { bubbles: true }));
       input.dispatchEvent(new Event('change', { bubbles: true }));
     } catch {
-      this.replayCounts.delete(input);
       this.warning.showBlocked('Veilo could not safely return the inspected attachment to the chat. It was not shared.');
+    } finally {
+      if (previousMarker === null) input.removeAttribute('data-veilo-upload-replay');
+      else input.setAttribute('data-veilo-upload-replay', previousMarker);
     }
   }
 }

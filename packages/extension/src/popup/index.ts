@@ -26,6 +26,9 @@ function render(saving = false): void {
       : 'Protection stays on; the on-page indicator is hidden.';
   themeOptions.forEach(option => { option.checked = option.value === selectedTheme; });
   document.body.dataset.theme = selectedTheme;
+  document.querySelector<HTMLImageElement>('.brand img')!.src = selectedTheme === 'developer'
+    ? 'icons/veilo-32.png'
+    : 'icons/veilo-light-32.png';
   saveState.textContent = saving ? 'Saving setting…' : 'Settings apply to supported AI sites';
 }
 

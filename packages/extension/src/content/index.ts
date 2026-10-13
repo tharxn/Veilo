@@ -4,6 +4,8 @@ import { ClaudeAdapter } from '../adapters/claude';
 import { GeminiAdapter } from '../adapters/gemini';
 import { GenericChatAdapter } from '../adapters/genericChat';
 import { CopilotAdapter } from '../adapters/copilot';
+import { GrokAdapter } from '../adapters/grok';
+import { MetaAdapter } from '../adapters/meta';
 import { SiteAdapter } from '../adapters/types';
 import { BaseChatAdapter } from '../adapters/base';
 import { ReviewModal } from '../ui/reviewModal';
@@ -48,6 +50,8 @@ class VeiloExtension {
       new ClaudeAdapter(),
       new GeminiAdapter(),
       new CopilotAdapter(),
+      new GrokAdapter(),
+      new MetaAdapter(),
       new GenericChatAdapter(),
     ];
     this.listenToPageHook();
@@ -223,18 +227,29 @@ class VeiloExtension {
 
         let lastObserved = '';
         try {
+          if (normalize(adapter.readComposerText()) !== normalize(detection.originalText)) {
+            return 'Your draft changed while the review was open. Nothing was sent. Cancel and review the updated draft.';
+          }
           await adapter.writeComposerText(selectedRedactedText);
           // Copilot and some React rich-text editors reconcile input after
           // dispatching their input event. Verify the settled composer value,
           // with short retries, before allowing the page's send handler.
-          for (let attempt = 0; attempt < 8; attempt += 1) {
+          let matchingSince = 0;
+          for (let attempt = 0; attempt < 16; attempt += 1) {
             lastObserved = adapter.readComposerText();
             if (normalize(lastObserved) === normalize(selectedRedactedText)) {
+              matchingSince ||= performance.now();
+              if (performance.now() - matchingSince < 150) {
+                await new Promise(resolve => window.setTimeout(resolve, 25));
+                continue;
+              }
+              const sent = await this.proceedWithSend(selectedRedactedText);
+              if (!sent) return 'The draft changed before sending. Nothing was sent. Please review it again.';
               this.activeRedactionsCount += selectedEntities.length;
               this.renderBadge(true);
-              window.setTimeout(() => this.proceedWithSend(), 60);
               return true;
             }
+            matchingSince = 0;
             await new Promise(resolve => window.setTimeout(resolve, 50));
           }
         } catch (error) {
@@ -289,30 +304,35 @@ class VeiloExtension {
     });
   }
 
-  private proceedWithSend(): void {
+  private async proceedWithSend(expectedText?: string): Promise<boolean> {
     let acked = false;
+    let accepted = false;
     const onAck = (event: MessageEvent) => {
       if (event.source !== window) return;
       if (!isVeiloMessage(event.data)) return;
       if (event.data.dir === 'main-to-iso' && event.data.type === 'allow-send-ack') {
         acked = true;
+        accepted = event.data.ok !== false;
       }
     };
     window.addEventListener('message', onAck);
 
     this.activeAdapter?.beginInternalSend();
     window.postMessage(
-      { channel: PS_CHANNEL, dir: 'iso-to-main', type: 'allow-send', via: this.lastVia },
+      { channel: PS_CHANNEL, dir: 'iso-to-main', type: 'allow-send', via: this.lastVia, expectedText },
       '*',
     );
 
-    window.setTimeout(() => {
+    await new Promise<void>(resolve => window.setTimeout(() => {
       window.removeEventListener('message', onAck);
-      if (!acked) {
+      if (!acked && expectedText === undefined) {
         this.activeAdapter?.triggerSend();
+        accepted = true;
       }
       this.handlingSend = false;
-    }, 80);
+      resolve();
+    }, 80));
+    return accepted;
   }
 
 }

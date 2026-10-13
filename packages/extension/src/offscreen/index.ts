@@ -86,6 +86,10 @@ export function runLocalNER(text: string): NEREntity[] {
 
 if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message.type === 'OFFSCREEN_BROWSER_APPEARANCE') {
+      sendResponse({ scheme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light' });
+      return;
+    }
     if (message.type === 'OFFSCREEN_RUN_NER') {
       try {
         const entities = runLocalNER(message.text || '');
@@ -107,3 +111,14 @@ if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
     }
   });
 }
+
+/** Only the color preference is sent; no page or prompt data is involved. */
+const browserColorPreference = window.matchMedia('(prefers-color-scheme: dark)');
+function reportBrowserAppearance(): void {
+  void chrome.runtime.sendMessage({
+    type: 'VEILO_BROWSER_APPEARANCE',
+    scheme: browserColorPreference.matches ? 'dark' : 'light',
+  }).catch(() => undefined);
+}
+browserColorPreference.addEventListener('change', reportBrowserAppearance);
+reportBrowserAppearance();

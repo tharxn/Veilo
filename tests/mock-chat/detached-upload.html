@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Generic AI detached upload regression</title></head>
+<body>
+  <main>
+    <div id="prompt-textarea" contenteditable="true" role="textbox" aria-label="Ask AI"></div>
+    <button id="send-btn" aria-label="Send prompt">Send</button>
+    <button id="more">Add to message</button>
+    <div id="upload-menu" hidden><button id="upload">Attach files</button></div>
+    <label id="connected-parent">Connected upload<input id="connected-input" type="file" multiple><span id="upload-anchor">Upload anchor</span></label>
+    <label><input id="remove-input" type="checkbox">Remove upload control during inspection</label>
+    <label><input id="remove-parent" type="checkbox">Remove upload parent during inspection</label>
+    <p id="upload-count">0</p>
+    <p id="upload-handler-calls">0</p>
+    <ul id="uploaded-files"></ul>
+  </main>
+  <script>
+    let uploadedCount = 0;
+    let handlerCalls = 0;
+    function receiveUpload(input) {
+      handlerCalls += 1;
+      document.getElementById('upload-handler-calls').textContent = String(handlerCalls);
+      const files = Array.from(input.files || []);
+      if (!files.length) return;
+      uploadedCount += 1;
+      document.getElementById('upload-count').textContent = String(uploadedCount);
+      for (const file of files) {
+        const row = document.createElement('li');
+        row.textContent = file.name;
+        document.getElementById('uploaded-files').append(row);
+      }
+    }
+    document.getElementById('more').onclick = () => document.getElementById('upload-menu').hidden = false;
+    document.getElementById('upload').onclick = () => {
+      // OpenRouter-style temporary input: never appended to document.
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.multiple = true;
+      // Consuming an empty native change before approval would lose this
+      // callback permanently, exactly like temporary one-shot upload inputs.
+      input.addEventListener('change', () => receiveUpload(input), { once: true });
+      input.click();
+      document.getElementById('upload-menu').hidden = true;
+    };
+    // A delegated capture listener runs before isolated target listeners.
+    document.addEventListener('change', event => {
+      if (event.target.id === 'connected-input') receiveUpload(event.target);
+    }, true);
+    window.addEventListener('message', event => {
+      if (event.source !== window || event.data?.channel !== '__VEILO__' || event.data?.type !== 'file-upload-selected') return;
+      // Model a menu closing while asynchronous OCR/file inspection runs.
+      if (document.getElementById('remove-parent').checked) document.getElementById('connected-parent')?.remove();
+      else if (document.getElementById('remove-input').checked) document.getElementById('connected-input')?.remove();
+    });
+  </script>
+</body>
+</html>

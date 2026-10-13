@@ -1,3 +1,5 @@
+import { readDraft, normalizeDraft, replaceRichDraft } from './richComposer';
+import { installPageUploadGuard } from './pageUploadGuard';
 /**
  * MAIN-world interceptor.
  *
@@ -6,8 +8,8 @@
  * stopPropagation. This script runs in the page world (manifest world: MAIN)
  * and is the only reliable way to pause Enter / Send before the prompt leaves.
  *
- * Keep this file free of shared-module imports so Vite emits a single classic
- * script with no ES `import` statements.
+ * Static imports are bundled by Vite into a single classic script. The emitted
+ * pageHook.js must not contain runtime ES import statements.
  */
 
 const PS_CHANNEL = '__VEILO__';
@@ -25,13 +27,14 @@ if (!window.__veiloPageHook) {
 
 function install(): void {
   let enabled = false;
+  installPageUploadGuard(() => enabled);
   let bypass = 0;
   let composerSelectors: string[] = [];
   let sendButtonSelectors: string[] = [];
   let lastAttemptAt = 0;
   let lastAttemptVia: string | null = null;
 
-  function postToIso(payload: { type: string; via?: string }): void {
+  function postToIso(payload: { type: string; via?: string; requestId?: string; ok?: boolean }): void {
     window.postMessage({ channel: PS_CHANNEL, dir: 'main-to-iso', ...payload }, '*');
   }
 
@@ -74,9 +77,9 @@ function install(): void {
       try {
         const nodes = document.querySelectorAll<HTMLElement>(sel);
         for (const el of nodes) {
-          if (el.getClientRects().length > 0) return el;
+          if (el.getClientRects().length > 0 && !el.closest('[hidden], [aria-hidden="true"]') && getComputedStyle(el).visibility !== 'hidden') return el;
         }
-        if (nodes[0]) return nodes[0];
+
       } catch {
         /* invalid selector */
       }
@@ -195,6 +198,9 @@ function install(): void {
       dir?: string;
       type?: string;
       via?: string;
+      requestId?: string;
+      text?: string;
+      expectedText?: string;
       composerSelectors?: string[];
       sendButtonSelectors?: string[];
     } | null;
@@ -208,20 +214,35 @@ function install(): void {
       sendButtonSelectors = data.sendButtonSelectors || [];
     }
 
+    if (data.type === 'replace-draft' && enabled && typeof data.requestId === 'string' &&
+        typeof data.text === 'string' && typeof data.expectedText === 'string') {
+      const composer = queryFirst(composerSelectors);
+      const requestId = data.requestId;
+      if (!composer || normalizeDraft(readDraft(composer)) !== normalizeDraft(data.expectedText)) {
+        postToIso({ type: 'draft-replaced', requestId, ok: false });
+        return;
+      }
+      void replaceRichDraft(composer, data.text).then(
+        ok => postToIso({ type: 'draft-replaced', requestId, ok }),
+        () => postToIso({ type: 'draft-replaced', requestId, ok: false }),
+      );
+      return;
+    }
+
     if (data.type === 'allow-send') {
-      bypass += 1;
-      postToIso({ type: 'allow-send-ack' });
-      try {
-        if (data.via === 'click' || data.via === 'submit') {
-          const btn = queryFirst(sendButtonSelectors);
-          if (btn) {
-            btn.click();
-          } else {
-            dispatchEnter();
-          }
-        } else {
-          dispatchEnter();
+      if (typeof data.expectedText === 'string') {
+        const composer = queryFirst(composerSelectors);
+        if (!composer || normalizeDraft(readDraft(composer)) !== normalizeDraft(data.expectedText)) {
+          postToIso({ type: 'allow-send-ack', ok: false });
+          return;
         }
+      }
+      bypass += 1;
+      postToIso({ type: 'allow-send-ack', ok: true });
+      try {
+        const btn = queryFirst(sendButtonSelectors);
+        if (btn) btn.click();
+        else dispatchEnter();
       } finally {
         window.setTimeout(() => {
           bypass = Math.max(0, bypass - 1);

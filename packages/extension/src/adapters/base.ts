@@ -1,4 +1,6 @@
 import { AdapterHealth, SiteAdapter } from './types';
+import { readDraft } from '../intercept/richComposer';
+import { PS_CHANNEL } from '../intercept/protocol';
 
 export interface AdapterSelectors {
   composer: string[];
@@ -67,97 +69,43 @@ export abstract class BaseChatAdapter implements SiteAdapter {
 
   public readComposerText(): string {
     const composer = this.getComposer();
-    if (!composer) return '';
-    if (composer instanceof HTMLTextAreaElement || composer instanceof HTMLInputElement) {
-      return composer.value;
-    }
-    return (composer.innerText || composer.textContent || '').replace(/\u00a0/g, ' ');
+    return composer ? readDraft(composer) : '';
   }
 
-  public writeComposerText(text: string): void | Promise<void> {
+  public async writeComposerText(text: string): Promise<void> {
     const composer = this.getComposer();
-    if (!composer) return;
-
+    if (!composer) throw new Error('composer-unavailable');
     if (composer instanceof HTMLTextAreaElement || composer instanceof HTMLInputElement) {
       composer.focus();
       const proto = composer instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-      const desc = Object.getOwnPropertyDescriptor(proto, 'value');
-      if (desc?.set) {
-        desc.set.call(composer, text);
-      } else {
-        composer.value = text;
-      }
-      composer.dispatchEvent(new InputEvent('input', {
-        bubbles: true,
-        composed: true,
-        inputType: 'insertReplacementText',
-        data: text,
-      }));
+      const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+      if (setter) setter.call(composer, text);
+      else composer.value = text;
+      composer.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertReplacementText', data: text }));
       composer.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
       return;
     }
 
-    composer.focus();
-    const selection = window.getSelection();
-    if (selection) {
-      const range = document.createRange();
-      range.selectNodeContents(composer);
-      selection.removeAllRanges();
-      selection.addRange(range);
-    }
-
-    const inserted = document.execCommand('insertText', false, text);
-    const current = (composer.innerText || composer.textContent || '').trim();
-    if (!inserted || current !== text.trim()) {
-      // Some web editors (including custom span-based composers) ignore a
-      // direct insertText command but accept a paste event through their app
-      // state handler. Never send based on this alone: caller verifies the
-      // resulting composer contents before allowing submission.
-      try {
-        // insertText may collapse the earlier range selection to a caret
-        // without updating the editor's own selection model. Re-select the
-        // entire editable immediately before paste so the editor replaces
-        // the original prompt rather than appending the redacted copy.
-        composer.focus();
-        document.execCommand('selectAll');
-        const currentSelection = window.getSelection();
-        if (currentSelection) {
-          const replacementRange = document.createRange();
-          replacementRange.selectNodeContents(composer);
-          currentSelection.removeAllRanges();
-          currentSelection.addRange(replacementRange);
-        }
-        const clipboardData = new DataTransfer();
-        clipboardData.setData('text/plain', text);
-        const pasteEvent = new ClipboardEvent('paste', {
-          bubbles: true,
-          cancelable: true,
-          composed: true,
-          clipboardData,
-        });
-        composer.dispatchEvent(pasteEvent);
-        // A prevented paste usually means the app took ownership and is
-        // updating framework state asynchronously. Let verification poll it.
-        if (pasteEvent.defaultPrevented) return;
-      } catch {
-        // Continue to the controlled DOM fallback below.
-      }
-
-      const afterPaste = (composer.innerText || composer.textContent || '').trim();
-      if (afterPaste === text.trim()) return;
-
-      composer.textContent = text;
-      composer.dispatchEvent(
-        new InputEvent('input', {
-          bubbles: true,
-          composed: true,
-          inputType: 'insertReplacementText',
-          data: text,
-        }),
-      );
-    }
+    const requestId = crypto.randomUUID();
+    await new Promise<void>((resolve, reject) => {
+      const timeout = window.setTimeout(() => {
+        window.removeEventListener('message', onMessage);
+        reject(new Error('replacement-timeout'));
+      }, 1800);
+      const onMessage = (event: MessageEvent) => {
+        const data = event.data;
+        if (event.source !== window || data?.channel !== PS_CHANNEL || data.dir !== 'main-to-iso' ||
+            data.type !== 'draft-replaced' || data.requestId !== requestId) return;
+        window.clearTimeout(timeout);
+        window.removeEventListener('message', onMessage);
+        if (data.ok) resolve();
+        else reject(new Error('replacement-not-accepted'));
+      };
+      window.addEventListener('message', onMessage);
+      window.postMessage({ channel: PS_CHANNEL, dir: 'iso-to-main', type: 'replace-draft',
+        requestId, text, expectedText: readDraft(composer) }, '*');
+    });
   }
-
   /**
    * Isolated-world fallback. The MAIN-world page hook is what actually stops
    * Claude/Gemini; these listeners still cover the mock page and ChatGPT cases
@@ -289,9 +237,9 @@ export abstract class BaseChatAdapter implements SiteAdapter {
       try {
         const nodes = document.querySelectorAll<HTMLElement>(sel);
         for (const el of nodes) {
-          if (el.getClientRects().length > 0) return el;
+          if (el.getClientRects().length > 0 && !el.closest('[hidden], [aria-hidden="true"]') && getComputedStyle(el).visibility !== 'hidden') return el;
         }
-        if (nodes[0]) return nodes[0];
+
       } catch {
         /* invalid selector */
       }

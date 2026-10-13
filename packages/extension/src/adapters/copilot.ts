@@ -29,42 +29,4 @@ export class CopilotAdapter extends GenericChatAdapter {
     return matched;
   }
 
-  public async writeComposerText(text: string): Promise<void> {
-    const composer = this.getComposer();
-    if (!composer || composer instanceof HTMLTextAreaElement || composer instanceof HTMLInputElement) {
-      super.writeComposerText(text);
-      return;
-    }
-
-    const selectContents = (element: HTMLElement, collapse = false) => {
-      const selection = window.getSelection();
-      if (!selection) return;
-      const range = document.createRange();
-      range.selectNodeContents(element);
-      if (collapse) range.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(range);
-    };
-
-    // Replace the current selection in a single browser editing transaction.
-    // A clear-then-insert sequence lets Copilot restore stale controlled state
-    // between the two operations; select-all plus insert avoids that gap.
-    composer.focus();
-    document.execCommand('selectAll');
-    selectContents(composer);
-    const inserted = document.execCommand('insertText', false, text);
-    const currentText = (composer.innerText || composer.textContent || '').trim();
-    if (inserted && currentText === text.trim()) return;
-
-    // A single direct replacement is the only fallback; do not dispatch a
-    // second insertion event that could append a duplicate prompt.
-    composer.textContent = text;
-    composer.dispatchEvent(new InputEvent('input', {
-      bubbles: true,
-      composed: true,
-      inputType: 'insertReplacementText',
-      data: text,
-    }));
-  }
-
 }

@@ -422,6 +422,8 @@ export function detectRuleEntities(text: string): RawEntityMatch[] {
   while ((m = passwordRegex.exec(text)) !== null) {
     if (m[1]) {
       const val = m[1];
+      // Existing redaction tokens are safe even beside quotes or punctuation.
+      if (/^["'`]?\[[A-Z][A-Z0-9_]*\]["'`.!?]*$/.test(val)) continue;
       const valStart = m.index + m[0].lastIndexOf(val);
       matches.push({
         type: 'Password',

@@ -18,16 +18,30 @@ async function ensureOffscreenDocument(): Promise<void> {
 
   creatingOffscreen = chrome.offscreen.createDocument({
     url: OFFSCREEN_DOCUMENT_PATH,
-    reasons: [chrome.offscreen.Reason.WORKERS],
+    reasons: [chrome.offscreen.Reason.WORKERS, chrome.offscreen.Reason.MATCH_MEDIA],
 
-    justification: 'Run local NER and image OCR workers without host page CSP restrictions',
+    justification: 'Run local NER/OCR workers and observe the browser color preference for the toolbar logo',
   });
 
-  await creatingOffscreen;
-  creatingOffscreen = null;
+  try {
+    await creatingOffscreen;
+  } finally {
+    creatingOffscreen = null;
+  }
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message.type === 'VEILO_BROWSER_APPEARANCE') {
+    if (_sender.url !== chrome.runtime.getURL(OFFSCREEN_DOCUMENT_PATH)
+      || (message.scheme !== 'light' && message.scheme !== 'dark')) {
+      sendResponse({ updated: false });
+      return;
+    }
+    void setToolbarLogo(message.scheme)
+      .then(() => sendResponse({ updated: true }))
+      .catch(() => sendResponse({ updated: false }));
+    return true;
+  }
   if (message.type === 'RUN_NER') {
     ensureOffscreenDocument()
       .then(() => {
@@ -57,3 +71,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 });
+
+/** Toolbar colors follow the browser/system preference, independently of Veilo's popup theme. */
+async function setToolbarLogo(scheme: 'light' | 'dark'): Promise<void> {
+  const prefix = scheme === 'light' ? 'veilo-light' : 'veilo';
+  await chrome.action.setIcon({ path: {
+    16: 'icons/' + prefix + '-16.png',
+    32: 'icons/' + prefix + '-32.png',
+    48: 'icons/' + prefix + '-48.png',
+  } });
+}
+
+async function syncToolbarLogo(): Promise<void> {
+  try {
+    await ensureOffscreenDocument();
+    const appearance = await chrome.runtime.sendMessage({ type: 'OFFSCREEN_BROWSER_APPEARANCE' });
+    if (appearance?.scheme === 'light' || appearance?.scheme === 'dark') await setToolbarLogo(appearance.scheme);
+  } catch (error) {
+    console.warn('[Veilo] Could not update toolbar appearance:', error);
+  }
+}
+
+chrome.runtime.onInstalled.addListener(() => { void syncToolbarLogo(); });
+chrome.runtime.onStartup.addListener(() => { void syncToolbarLogo(); });
+void syncToolbarLogo();

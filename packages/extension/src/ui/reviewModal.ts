@@ -94,9 +94,17 @@ export class ReviewModal {
     document.body.appendChild(this.container);
 
     const getChecks = () => Array.from(this.shadowRoot?.querySelectorAll<HTMLInputElement>('[data-entity-index]') || []);
+    let pending = false;
     const updateSendButton = () => {
       const button = this.shadowRoot?.querySelector<HTMLButtonElement>('#btn-redacted');
-      if (button) button.disabled = !getChecks().some(check => check.checked);
+      if (button) button.disabled = pending || !getChecks().some(check => check.checked);
+    };
+    const setPending = (value: boolean) => {
+      pending = value;
+      this.shadowRoot?.querySelectorAll<HTMLButtonElement | HTMLInputElement>(
+        '#btn-original, #btn-cancel, #select-all, #select-none, [data-entity-index]',
+      ).forEach(control => { control.disabled = value; });
+      updateSendButton();
     };
     getChecks().forEach(check => check.addEventListener('change', updateSendButton));
     this.shadowRoot.querySelector('#select-all')?.addEventListener('click', () => {
@@ -110,12 +118,14 @@ export class ReviewModal {
 
     // Event listeners
     this.shadowRoot.querySelector('#btn-redacted')?.addEventListener('click', async () => {
-      const button = this.shadowRoot?.querySelector<HTMLButtonElement>('#btn-redacted');
-      if (button) button.disabled = true;
+      if (pending) return;
+      const currentContainer = this.container;
+      setPending(true);
       const selectedEntityIndexes = getChecks()
         .filter(check => check.checked)
         .map(check => Number(check.dataset.entityIndex));
       const result = await options.onSendRedacted(selectedEntityIndexes);
+      if (this.container !== currentContainer) return;
       if (result === true) {
         this.close();
       } else {
@@ -126,7 +136,7 @@ export class ReviewModal {
             : 'Redaction could not be verified in the composer. Nothing was sent.';
           error.removeAttribute('hidden');
         }
-        if (button) button.disabled = false;
+        setPending(false);
       }
     });
 

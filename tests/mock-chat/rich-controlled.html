@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Veilo controlled rich editor regression fixture</title>
+  <style>
+    body { font: 16px sans-serif; margin: 32px; }
+    [contenteditable] { display: block; border: 1px solid #888; padding: 12px; min-height: 50px; }
+    button { margin-top: 16px; }
+    pre { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Controlled editor test fixture</h1>
+  <span id="m365-chat-editor-target-element" role="textbox" aria-label="Message Copilot"
+        contenteditable="true" data-lexical-editor="true"></span>
+  <button type="button" aria-label="Send message" id="send-btn">Send</button>
+  <pre id="sent-payload-log"></pre>
+  <div data-message-author-role="assistant"></div>
+  <script>
+    // This is a minimal simulation, not a copied implementation of Lexical.
+    // It deliberately owns a model and a separately synchronized selection.
+    // Sending reads that model, so changing DOM alone cannot produce a pass.
+    const params = new URL(location.href).searchParams;
+    const mode = params.get('mode') || 'controlled';
+    const composer = document.getElementById('m365-chat-editor-target-element');
+    const sent = document.getElementById('sent-payload-log');
+    let model = 'My email is demo@example.com, password: DemoOnly42, API key: demo-key-42.';
+    let selectionStart = model.length;
+    let selectionEnd = model.length;
+    let textNode;
+    let rendering = false;
+    let restoreTimer;
+
+    function render() {
+      rendering = true;
+      const paragraph = document.createElement('p');
+      const span = document.createElement('span');
+      span.setAttribute('data-lexical-text', 'true');
+      textNode = document.createTextNode(model);
+      span.appendChild(textNode);
+      paragraph.appendChild(span);
+      const decoration = document.createElement('span');
+      decoration.setAttribute('aria-hidden', 'true');
+      decoration.setAttribute('contenteditable', 'false');
+      decoration.textContent = '\u200b\ufeff';
+      paragraph.appendChild(decoration);
+      composer.replaceChildren(paragraph);
+      queueMicrotask(() => { rendering = false; });
+    }
+
+    function synchronizeSelection() {
+      const selection = getSelection();
+      if (!selection || !selection.rangeCount) return;
+      const range = selection.getRangeAt(0);
+      // A model-backed editor maps text positions. Outer root element ranges
+      // are intentionally ignored to reproduce the former extension bug.
+      if (range.startContainer !== textNode || range.endContainer !== textNode) return;
+      selectionStart = range.startOffset;
+      selectionEnd = range.endOffset;
+    }
+    document.addEventListener('selectionchange', synchronizeSelection);
+
+    function replaceSelection(data) {
+      model = model.slice(0, selectionStart) + data + model.slice(selectionEnd);
+      selectionStart += data.length;
+      selectionEnd = selectionStart;
+      setTimeout(render, 20);
+    }
+
+    composer.addEventListener('beforeinput', event => {
+      if (mode !== 'beforeinput' || event.inputType !== 'insertText') return;
+      synchronizeSelection();
+      event.preventDefault();
+      if (typeof event.data === 'string') replaceSelection(event.data);
+    });
+
+    composer.addEventListener('input', event => {
+      if (mode === 'reconcile-late') {
+        // The transient DOM change looks successful before the old model wins.
+        clearTimeout(restoreTimer);
+        restoreTimer = setTimeout(render, 75);
+        return;
+      }
+      if (mode === 'reject') {
+        setTimeout(render, 20);
+        return;
+      }
+      if (event.inputType === 'insertText' && typeof event.data === 'string') {
+        replaceSelection(event.data);
+      } else {
+        // A textContent assignment plus fabricated input event is rejected.
+        setTimeout(render, 20);
+      }
+    });
+
+    composer.addEventListener('paste', event => {
+      event.preventDefault();
+      if (mode === 'reject' || mode === 'reconcile-late') {
+        setTimeout(render, mode === 'reject' ? 20 : 75);
+        return;
+      }
+      const data = event.clipboardData?.getData('text/plain');
+      if (typeof data === 'string') replaceSelection(data);
+    });
+
+    const mutationObserver = new MutationObserver(() => {
+      if (rendering || mode === 'reconcile-late') return;
+      if (!composer.contains(textNode)) setTimeout(render, 20);
+    });
+    render();
+    mutationObserver.observe(composer, { subtree: true, childList: true, characterData: true });
+
+    function send() {
+      sent.textContent = model;
+      document.querySelector('[data-message-author-role="assistant"]').textContent = model;
+    }
+    document.getElementById('send-btn').addEventListener('click', send);
+    composer.addEventListener('keydown', event => {
+      if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); }
+    });
+  </script>
+</body>
+</html>

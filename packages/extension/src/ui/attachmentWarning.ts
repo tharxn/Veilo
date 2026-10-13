@@ -1,4 +1,4 @@
-import { applyActiveTheme, REDUCED_MOTION, THEME_COMPONENTS, THEME_TOKENS, ensureThemeFont, escapeHtml, formatEntityLabel, veiloMarkSvg } from './theme';
+import { applyActiveTheme, REDUCED_MOTION, THEME_COMPONENTS, THEME_TOKENS, ensureThemeFont, escapeHtml, formatEntityLabel, veiloLoadingSvg, veiloMarkSvg } from './theme';
 
 export interface AttachmentFinding {
   type: string;
@@ -27,7 +27,7 @@ export class AttachmentWarning {
     stage.setAttribute('aria-live', 'polite');
     stage.setAttribute('aria-busy', 'true');
     stage.setAttribute('aria-label', `Veilo is checking your ${kind} locally`);
-    stage.innerHTML = '<svg class="loader-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true"><g class="loader-symbol"><path class="loader-big" d="M5.5 8.5 13.9 25c.8 1.6 3.1 1.6 3.9 0l8.7-17"/><path class="loader-small" d="m13.4 14.1 2.3 4.2 4.8-9.1"/></g></svg>';
+    stage.innerHTML = veiloLoadingSvg(68, this.loadingSurface());
     shadow.append(style, stage);
     document.documentElement.append(this.container);
   }
@@ -161,29 +161,58 @@ export class AttachmentWarning {
     close.focus();
   }
 
+  /** Match the actual chat surface, which may differ from Veilo's UI theme. */
+  private loadingSurface(): 'light' | 'dark' {
+    const seen = new Set<Element>();
+    let element = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
+    while (element) {
+      seen.add(element);
+      element = element.parentElement;
+    }
+    if (document.body) seen.add(document.body);
+    seen.add(document.documentElement);
+    for (const surface of seen) {
+      const color = getComputedStyle(surface).backgroundColor;
+      if (!/^rgba?\(/.test(color)) continue;
+      const channels = color.match(/[\d.]+/g)?.map(Number);
+      if (!channels || channels.length < 3 || (channels[3] ?? 1) < .9) continue;
+      const brightness = channels[0] * .2126 + channels[1] * .7152 + channels[2] * .0722;
+      return brightness > 150 ? 'light' : 'dark';
+    }
+    const scheme = getComputedStyle(document.documentElement).colorScheme;
+    if (scheme === 'light' || scheme === 'dark') return scheme;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
   private styles(): string {
     return `
       ${THEME_TOKENS}
       :host { all: initial; position: fixed; inset: 0; z-index: 2147483647; }
       ${THEME_COMPONENTS}
       .loading-stage { position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; background: transparent; }
-      .loader-mark { display: block; width: 68px; height: 68px; overflow: visible; }
-      .loader-symbol { transform-origin: 16px 16px; }
-      .loader-big { stroke: #b9502b; stroke-width: 4.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 48; stroke-dashoffset: 48; opacity: 0; animation: veiloCycleBig 1.8s ease-in-out infinite; }
-      .loader-small { stroke: #f3ebdb; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 18; stroke-dashoffset: 18; opacity: 0; animation: veiloCycleSmall 1.8s ease-in-out infinite; }
-      @keyframes veiloCycleBig {
-        0%, 4% { stroke-dashoffset: 48; opacity: 0; }
-        5% { opacity: 1; }
-        46%, 84% { stroke-dashoffset: 0; opacity: 1; }
-        94%, 100% { stroke-dashoffset: 48; opacity: 0; }
+      .loader-mark { display: block; width: 68px; height: 68px; }
+      .loader-trace { stroke-dasharray: 100; stroke-dashoffset: 100; opacity: 0; }
+      .loader-fold-trace { animation: veiloPaintFold 1.8s cubic-bezier(.35, 0, .25, 1) infinite; }
+      .loader-orange-trace { animation: veiloPaintOrange 1.8s cubic-bezier(.35, 0, .25, 1) infinite; }
+      .loader-artwork { animation: veiloResetV 1.8s ease-in-out infinite; }
+      @keyframes veiloPaintFold {
+        0%, 5% { stroke-dashoffset: 100; opacity: 0; }
+        6% { stroke-dashoffset: 100; opacity: 1; }
+        52%, 100% { stroke-dashoffset: 0; opacity: 1; }
       }
-      @keyframes veiloCycleSmall {
-        0%, 26% { stroke-dashoffset: 18; opacity: 0; }
-        27% { opacity: 1; }
-        70%, 84% { stroke-dashoffset: 0; opacity: 1; }
-        94%, 100% { stroke-dashoffset: 18; opacity: 0; }
+      @keyframes veiloPaintOrange {
+        0%, 52% { stroke-dashoffset: 100; opacity: 0; }
+        53% { stroke-dashoffset: 100; opacity: 1; }
+        82%, 100% { stroke-dashoffset: 0; opacity: 1; }
+      }
+      @keyframes veiloResetV {
+        0%, 88% { opacity: 1; }
+        98%, 100% { opacity: 0; }
       }${REDUCED_MOTION}
-      @media (prefers-reduced-motion: reduce) { .loader-symbol, .loader-big, .loader-small { animation: none !important; stroke-dashoffset: 0; } }
+      @media (prefers-reduced-motion: reduce) {
+        .loader-trace { animation: none !important; stroke-dashoffset: 0; opacity: 1; }
+        .loader-artwork { animation: none !important; opacity: 1; }
+      }
     `;
   }
 

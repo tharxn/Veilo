@@ -4,17 +4,17 @@
   "version": "0.2.0",
   "description": "On-device PII and secret redaction for popular AI chat platforms",
   "icons": {
-    "16": "icons/veilo-16.png",
-    "32": "icons/veilo-32.png",
-    "48": "icons/veilo-48.png",
-    "128": "icons/veilo-128.png"
+    "16": "icons/veilo-light-16.png",
+    "32": "icons/veilo-light-32.png",
+    "48": "icons/veilo-management-48.png",
+    "128": "icons/veilo-light-128.png"
   },
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
-      "16": "icons/veilo-16.png",
-      "32": "icons/veilo-32.png",
-      "48": "icons/veilo-48.png"
+      "16": "icons/veilo-light-16.png",
+      "32": "icons/veilo-light-32.png",
+      "48": "icons/veilo-light-48.png"
     }
   },
   "permissions": [

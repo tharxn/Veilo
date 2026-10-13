@@ -1,3 +1,6 @@
+import veiloLogoSvg from './assets/veilo-mark.svg?raw';
+import veiloLightLogoSvg from './assets/veilo-mark-light.svg?raw';
+
 /**
  * Veilo UI theme.
  *
@@ -46,9 +49,23 @@ export function ensureThemeFont(): void {
   (document.head || document.documentElement).append(style);
 }
 
+/** Transparent beige/orange artwork for the dark header and status surfaces. */
 export function veiloMarkSvg(size = 18, className = ''): string {
-  const classAttr = className ? ' class="' + className + '"' : '';
-  return '<svg' + classAttr + ' viewBox="0 0 32 32" width="' + size + '" height="' + size + '" fill="none" aria-hidden="true"><path d="M5.5 8.5 13.9 25c.8 1.6 3.1 1.6 3.9 0l8.7-17" stroke="#b9502b" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/><path d="m13.4 14.1 2.3 4.2 4.8-9.1" stroke="#f3ebdb" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const classAttr = className ? ' class="' + escapeHtml(className) + '"' : '';
+  return veiloLogoSvg.replace('<svg', '<svg' + classAttr + ' width="' + size + '" height="' + size + '" aria-hidden="true"');
+}
+
+/** Paint the folded arm and its tail first, then paint orange from the bottom up. */
+export function veiloLoadingSvg(size = 68, surface: 'light' | 'dark' = 'dark'): string {
+  const logoSvg = surface === 'light' ? veiloLightLogoSvg : veiloLogoSvg;
+  const [orange, fold] = Array.from(logoSvg.matchAll(/<path\b[^>]*\/>/g), match => match[0]);
+  const masks = '<defs><mask id="veilo-loader-fold" maskUnits="userSpaceOnUse" x="0" y="0" width="128" height="128">'
+    + '<path class="loader-trace loader-fold-trace" d="M18 -10 59.8 91 Q67 96 81 87" pathLength="100" fill="none" stroke="#fff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></mask>'
+    + '<mask id="veilo-loader-orange" maskUnits="userSpaceOnUse" x="0" y="0" width="128" height="128">'
+    + '<path class="loader-trace loader-orange-trace" d="M64 133 104 -10" pathLength="100" fill="none" stroke="#fff" stroke-width="34" stroke-linecap="round"/></mask></defs>';
+  return '<svg class="loader-mark" viewBox="0 0 128 128" width="' + size + '" height="' + size + '" fill="none" aria-hidden="true">'
+    + masks + '<g class="loader-artwork"><g mask="url(#veilo-loader-orange)">' + orange
+    + '</g><g mask="url(#veilo-loader-fold)">' + fold + '</g></g></svg>';
 }
 
 export function escapeHtml(value: string): string {
