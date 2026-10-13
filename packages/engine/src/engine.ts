@@ -70,6 +70,7 @@ export function resolveOverlaps(matches: RawEntityMatch[], allowlist: Set<string
 export class DetectionEngine {
   private vault: PlaceholderVault;
   private allowlist: Set<string> = new Set();
+  private disabledTypes: Set<string> = new Set();
 
   constructor(vault?: PlaceholderVault, allowlistTerms: string[] = []) {
     this.vault = vault || new PlaceholderVault();
@@ -78,6 +79,10 @@ export class DetectionEngine {
 
   public setAllowlist(terms: string[]): void {
     this.allowlist = new Set(terms.map(t => t.trim().toLowerCase()));
+  }
+
+  public setDisabledTypes(types: string[]): void {
+    this.disabledTypes = new Set(types);
   }
 
   public getVault(): PlaceholderVault {
@@ -90,7 +95,7 @@ export class DetectionEngine {
   public detectAndRedact(text: string, nerEntities: RawEntityMatch[] = []): DetectionResult {
     const ruleEntities = detectRuleEntities(text);
     const allCandidates = [...ruleEntities, ...nerEntities];
-    const resolvedSpans = resolveOverlaps(allCandidates, this.allowlist);
+    const resolvedSpans = resolveOverlaps(allCandidates, this.allowlist).filter(match => !this.disabledTypes.has(match.type));
 
     // Build redacted string by iterating spans in reverse order to preserve indices
     let redactedText = text;

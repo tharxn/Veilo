@@ -29,6 +29,7 @@ function install(): void {
   let composerSelectors: string[] = [];
   let sendButtonSelectors: string[] = [];
   let lastAttemptAt = 0;
+  let lastAttemptVia: string | null = null;
 
   function postToIso(payload: { type: string; via?: string }): void {
     window.postMessage({ channel: PS_CHANNEL, dir: 'main-to-iso', ...payload }, '*');
@@ -118,11 +119,12 @@ function install(): void {
 
   function emitAttempt(via: string, e: Event): void {
     const now = Date.now();
-    if (now - lastAttemptAt < 250) {
+    if (via === 'click' && lastAttemptVia === 'click' && now - lastAttemptAt < 250) {
       block(e);
       return;
     }
     lastAttemptAt = now;
+    lastAttemptVia = via;
     block(e);
     postToIso({ type: 'send-attempt', via });
   }
@@ -145,7 +147,7 @@ function install(): void {
   window.addEventListener(
     'keydown',
     e => {
-      if (!enabled || bypass > 0) return;
+      if (!enabled || (bypass > 0 && !e.isTrusted)) return;
       if (fromShieldUi(e)) return;
       if (e.key !== 'Enter' || e.shiftKey || e.isComposing || e.keyCode === 229) return;
       if (!isInComposer(e.target)) return;
@@ -157,7 +159,7 @@ function install(): void {
   window.addEventListener(
     'click',
     e => {
-      if (!enabled || bypass > 0) return;
+      if (!enabled || (bypass > 0 && !e.isTrusted)) return;
       if (fromShieldUi(e)) return;
       if (!isSendControl(e.target)) return;
       emitAttempt('click', e);
@@ -168,7 +170,7 @@ function install(): void {
   window.addEventListener(
     'pointerdown',
     e => {
-      if (!enabled || bypass > 0) return;
+      if (!enabled || (bypass > 0 && !e.isTrusted)) return;
       if (fromShieldUi(e)) return;
       if (!isSendControl(e.target)) return;
       emitAttempt('click', e);
@@ -179,7 +181,7 @@ function install(): void {
   window.addEventListener(
     'submit',
     e => {
-      if (!enabled || bypass > 0) return;
+      if (!enabled || (bypass > 0 && !e.isTrusted)) return;
       if (fromShieldUi(e)) return;
       emitAttempt('submit', e);
     },

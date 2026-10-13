@@ -77,3 +77,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (changes.theme) selectedTheme = changes.theme.newValue === 'developer' ? 'developer' : 'everyday';
   render();
 });
+
+document.querySelector('#open-settings')!.addEventListener('click', () => {
+  void chrome.runtime.openOptionsPage();
+});

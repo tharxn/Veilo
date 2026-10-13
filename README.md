@@ -31,6 +31,18 @@ Veilo is currently installed as an unpacked developer extension; it is not yet l
 
 After rebuilding, open `chrome://extensions` and click Veilo’s **Reload** button. Reload the AI chat tab too.
 
+## Make Veilo work your way
+
+Click Veilo’s extension icon, then **All settings**, or use **Extension options** in Chrome. Preferences save automatically on this device and update open AI chat pages.
+
+- **Protection** turns Veilo on or off globally.
+- **On-page status** shows or hides the small protection indicator.
+- **Theme** chooses the existing Everyday or Developer appearance.
+- **AI sites** lets you turn Veilo checks off for individual platforms. Other recognized AI chats have their own setting.
+- **Detection labels** lets you disable labels such as emails or names while keeping other checks enabled. Disabled labels pass through unchanged and do not trigger a review. These preferences apply to prompts, supported text files, and image OCR findings.
+
+To make an exception for one prompt, use the individual checkboxes in its review window.
+
 ## What happens when you send a prompt
 
 1. Veilo watches the prompt composer on supported AI chat pages.

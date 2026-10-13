@@ -12,6 +12,7 @@ import { PS_CHANNEL, SendVia, isVeiloMessage } from '../intercept/protocol';
 import { AttachmentWarning } from '../ui/attachmentWarning';
 import { AttachmentGuard } from '../intercept/attachmentGuard';
 import { setActiveTheme } from '../ui/theme';
+import { DEFAULT_PREFERENCES, normalizePreferences, disabledEntityTypes, siteIdForUrl, VeiloPreferences } from '../settings/preferences';
 
 console.log('[Veilo] Content script initialized.');
 
@@ -24,11 +25,13 @@ class VeiloExtension {
   private activeAdapter: SiteAdapter | null = null;
   private activeRedactionsCount = 0;
   private showStatusToast = true;
-  private protectionEnabled = true;
+  private preferences: VeiloPreferences = normalizePreferences(DEFAULT_PREFERENCES as unknown as Record<string, unknown>);
+  private get protectionEnabled(): boolean {
+    return this.preferences.protectionEnabled && !this.preferences.disabledSites.includes(siteIdForUrl(new URL(window.location.href)));
+  }
   private toastPreferenceReady = false;
   private isInterceptionAttached = false;
   private handlingSend = false;
-  private interceptLock = false;
   private lastVia: SendVia = 'enter';
 
   constructor() {
@@ -79,37 +82,34 @@ class VeiloExtension {
     }
   }
 
+  private applyPreferences(): void {
+    this.engine.setDisabledTypes(disabledEntityTypes(this.preferences));
+    this.attachmentGuard.setDisabledTypes(disabledEntityTypes(this.preferences));
+    this.attachmentGuard.setEnabled(this.protectionEnabled);
+    this.showStatusToast = this.preferences.showStatusToast;
+    setActiveTheme(this.preferences.theme);
+    this.toastPreferenceReady = true;
+    this.enablePageHook();
+    this.renderBadge(this.activeAdapter?.selfTest().ok ?? false);
+  }
+
   private async loadPreferences(): Promise<void> {
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName !== 'local') return;
-      if (changes.protectionEnabled) {
-        this.protectionEnabled = changes.protectionEnabled.newValue !== false;
-        this.attachmentGuard.setEnabled(this.protectionEnabled);
-        if (this.protectionEnabled && this.activeAdapter) this.enablePageHook();
-        else window.postMessage({ channel: PS_CHANNEL, dir: 'iso-to-main', type: 'disable' }, '*');
+      const next = { ...this.preferences };
+      for (const key of Object.keys(DEFAULT_PREFERENCES)) {
+        if (changes[key]) Object.assign(next, { [key]: changes[key].newValue });
       }
-      if (changes.showStatusToast) this.showStatusToast = changes.showStatusToast.newValue !== false;
-      if (changes.theme) setActiveTheme(changes.theme.newValue);
-      this.toastPreferenceReady = true;
-      this.renderBadge(this.activeAdapter?.selfTest().ok ?? false);
+      this.preferences = normalizePreferences(next as unknown as Record<string, unknown>);
+      this.applyPreferences();
     });
 
     try {
-      const { protectionEnabled, showStatusToast, theme } = await chrome.storage.local.get({
-        protectionEnabled: true,
-        showStatusToast: true,
-        theme: 'everyday',
-      });
-      this.protectionEnabled = protectionEnabled !== false;
-      this.showStatusToast = showStatusToast !== false;
-      setActiveTheme(theme);
-      this.toastPreferenceReady = true;
+      this.preferences = normalizePreferences(await chrome.storage.local.get(DEFAULT_PREFERENCES));
     } catch {
-      this.protectionEnabled = true;
-      this.showStatusToast = true;
-      setActiveTheme('everyday');
-      this.toastPreferenceReady = true;
+      this.preferences = normalizePreferences(DEFAULT_PREFERENCES as unknown as Record<string, unknown>);
     }
+    this.applyPreferences();
   }
 
   private renderBadge(isHealthy: boolean): void {
@@ -185,15 +185,6 @@ class VeiloExtension {
       cancelFn();
       return;
     }
-    if (this.interceptLock) {
-      return;
-    }
-
-    this.interceptLock = true;
-    window.setTimeout(() => {
-      this.interceptLock = false;
-    }, 350);
-
     const text = this.activeAdapter.readComposerText();
     if (!text || !text.trim()) return;
 

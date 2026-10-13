@@ -11,6 +11,7 @@ export default defineConfig({
         background: resolve(__dirname, 'src/background/index.ts'),
         offscreen: resolve(__dirname, 'src/offscreen/index.ts'),
         popup: resolve(__dirname, 'src/popup/index.ts'),
+        settings: resolve(__dirname, 'src/settings/index.ts'),
       },
       output: {
         entryFileNames: '[name].js',
@@ -32,6 +33,10 @@ export default defineConfig({
         },
         {
           src: 'src/popup/popup.html',
+          dest: '.',
+        },
+        {
+          src: 'src/settings/settings.html',
           dest: '.',
         },
         {

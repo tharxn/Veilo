@@ -165,7 +165,7 @@ export abstract class BaseChatAdapter implements SiteAdapter {
    */
   public onSendAttempt(cb: (cancel: () => void, via: 'enter' | 'click' | 'submit') => void): () => void {
     const handleSend = (e: Event, via: 'enter' | 'click' | 'submit') => {
-      if (this.isInternalTrigger) return;
+      if (this.isInternalTrigger && !e.isTrusted) return;
 
       let canceled = false;
       const cancelFn = () => {
@@ -184,7 +184,7 @@ export abstract class BaseChatAdapter implements SiteAdapter {
     };
 
     const keydownHandler = (e: KeyboardEvent) => {
-      if (this.isInternalTrigger) return;
+      if (this.isInternalTrigger && !e.isTrusted) return;
       if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
       const target = e.target;
       const composer = this.getComposer();
@@ -194,13 +194,13 @@ export abstract class BaseChatAdapter implements SiteAdapter {
     };
 
     const clickHandler = (e: MouseEvent) => {
-      if (this.isInternalTrigger) return;
+      if (this.isInternalTrigger && !e.isTrusted) return;
       if (!this.isSendControl(e.target)) return;
       handleSend(e, 'click');
     };
 
     const submitHandler = (e: Event) => {
-      if (this.isInternalTrigger) return;
+      if (this.isInternalTrigger && !e.isTrusted) return;
       handleSend(e, 'submit');
     };
 

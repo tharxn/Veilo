@@ -38,6 +38,8 @@
     .theme-choice input:checked + .theme-card .theme-title::after { border: 3px solid var(--accent); background: var(--panel); }
     .theme-card p { margin-top: 2px; font-size: 11.5px; }
     .foot { padding-top: 11px; color: var(--muted); font-size: 11px; }
+    .settings-link { display:flex; align-items:center; justify-content:space-between; width:100%; margin-top:12px; padding:10px 0 0; border:0; border-top:1px solid var(--line); background:none; color:var(--ink); font:600 13px/1.4 VeiloInter,Inter,sans-serif; cursor:pointer; }
+    .settings-link:focus-visible { outline:2px solid var(--focus); outline-offset:3px; }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; } }
   </style>
 </head>
@@ -78,7 +80,8 @@
       </div>
     </section>
     <div class="foot" id="save-state" aria-live="polite">Settings apply to supported AI sites</div>
+    <button class="settings-link" id="open-settings" type="button">All settings <span aria-hidden="true">↗</span></button>
   </main>
-  <script src="popup.js"></script>
+  <script type="module" src="popup.js"></script>
 </body>
 </html>

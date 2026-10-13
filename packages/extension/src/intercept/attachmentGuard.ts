@@ -39,6 +39,7 @@ export class AttachmentGuard {
   private readonly inputPlacement = new WeakMap<HTMLInputElement, { parent: Node; nextSibling: Node | null }>();
   private busyCount = 0;
   private enabled = true;
+  private disabledTypes = new Set<string>();
 
   constructor(private readonly warning: AttachmentWarning) {}
 
@@ -52,6 +53,10 @@ export class AttachmentGuard {
 
   public setEnabled(enabled: boolean): void {
     this.enabled = enabled;
+  }
+
+  public setDisabledTypes(types: string[]): void {
+    this.disabledTypes = new Set(types);
   }
 
   private watchRoot(root: Node & ParentNode): void {
@@ -186,7 +191,7 @@ export class AttachmentGuard {
     const response = await chrome.runtime.sendMessage({ type: 'OCR_IMAGE', dataUrl });
     if (!response || response.error || !Array.isArray(response.findings)) throw new Error('OCR_FAILED');
     for (const finding of response.findings as Array<{ type: string; count: number }>) {
-      if (typeof finding.type === 'string' && Number.isInteger(finding.count) && finding.count > 0) {
+      if (typeof finding.type === 'string' && !this.disabledTypes.has(finding.type) && Number.isInteger(finding.count) && finding.count > 0) {
         findings.set(finding.type, (findings.get(finding.type) || 0) + finding.count);
       }
     }
@@ -195,7 +200,9 @@ export class AttachmentGuard {
   private async inspectTextFile(file: File, findings: Map<string, number>): Promise<void> {
     const bytes = await file.arrayBuffer();
     const text = this.decodeText(bytes);
-    const entities = new DetectionEngine().detectAndRedact(text).entities;
+    const engine = new DetectionEngine();
+    engine.setDisabledTypes([...this.disabledTypes]);
+    const entities = engine.detectAndRedact(text).entities;
     for (const entity of entities) findings.set(entity.type, (findings.get(entity.type) || 0) + 1);
   }
 

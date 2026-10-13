@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Veilo · Settings</title></head>
+<body>
+  <header class="topbar"><div class="topbar-inner"><a class="brand" href="#general"><img src="icons/veilo-48.png" alt="">Veilo<span class="brand-note">Settings</span></a><p id="save-state" role="status" aria-live="polite">Loading settings…</p></div></header>
+  <div class="layout">
+    <aside><p class="eyebrow">Your preferences</p><nav aria-label="Settings sections"><a href="#general">General</a><a href="#sites">AI sites</a><a href="#labels">Detection labels</a></nav><p class="aside-note">Stored on this device.<br>Changes save automatically.</p></aside>
+    <main>
+      <div class="intro"><p class="eyebrow">Make Veilo yours</p><h1>A little control.<br>A lot more peace of mind.</h1><p>Choose where Veilo works and what it checks before you share.</p></div>
+      <section id="general" aria-labelledby="general-heading">
+        <div class="section-title"><span class="section-number">01</span><div><h2 id="general-heading">General</h2><p>Protection, page status, and appearance.</p></div></div>
+        <div class="panel">
+          <label class="setting-row"><span><span class="row-title">Veilo protection</span><span class="description" id="protection-description">Check prompts and supported uploads on your selected AI sites.</span></span><span class="switch"><input type="checkbox" id="protection-toggle" role="switch" checked><span class="track"></span></span></label>
+          <label class="setting-row"><span><span class="row-title">On-page status</span><span class="description">Show Veilo’s small protection indicator at the bottom of AI chats.</span></span><span class="switch"><input type="checkbox" id="toast-toggle" role="switch" checked><span class="track"></span></span></label>
+          <div class="theme-section"><h3>Theme</h3><p>Use the same appearance in settings, the popup, and review windows.</p><div class="theme-options">
+            <label class="theme-choice"><input type="radio" name="theme" value="everyday" checked><span class="theme-card"><span class="swatches everyday" aria-hidden="true"><i></i><i></i><i></i></span><span class="theme-title">Everyday</span><span class="description">Warm beige and terracotta. Clear and familiar.</span></span></label>
+            <label class="theme-choice"><input type="radio" name="theme" value="developer"><span class="theme-card"><span class="swatches developer" aria-hidden="true"><i></i><i></i><i></i></span><span class="theme-title">Developer</span><span class="description">Deep brown and warm orange. Easy on the eyes.</span></span></label>
+          </div></div>
+        </div>
+      </section>
+      <section id="sites" aria-labelledby="sites-heading">
+        <div class="section-title"><span class="section-number">02</span><div><h2 id="sites-heading">AI sites</h2><p>Turn off a site to send prompts and uploads there without Veilo checks.</p></div></div>
+        <div class="section-tools"><p class="count" id="sites-count"></p><button class="text-button" type="button" id="enable-sites">Enable all sites</button></div>
+        <div class="option-grid" id="site-options"></div>
+        <p class="section-note">These choices apply where Veilo recognizes a chat. Chrome’s site-access permissions still apply.</p>
+      </section>
+      <section id="labels" aria-labelledby="labels-heading">
+        <div class="section-title"><span class="section-number">03</span><div><h2 id="labels-heading">Detection labels</h2><p>Enabled labels trigger a review. Disabled labels pass through as written.</p></div></div>
+        <div class="callout"><strong>Sharing emails or names often?</strong><p>Turn those labels off below. Your other enabled labels will still be checked. This applies to text prompts, supported files, and image scans.</p></div>
+        <div class="section-tools"><p class="count" id="labels-count"></p><button class="text-button" type="button" id="enable-labels">Detect all labels</button></div>
+        <div id="label-options"></div>
+        <p class="section-note">For a single message, use the checkboxes in the review window. These settings apply to future checks on every enabled site.</p>
+      </section>
+      <footer><img src="icons/veilo-32.png" alt=""><span>Veilo · A moment to review before you share.</span></footer>
+    </main>
+  </div>
+  <script type="module" src="settings.js"></script>
+</body>
+</html>
