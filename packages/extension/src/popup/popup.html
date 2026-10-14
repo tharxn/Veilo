@@ -39,6 +39,8 @@
     .theme-card p { margin-top: 2px; font-size: 11.5px; }
     .foot { padding-top: 11px; color: var(--muted); font-size: 11px; }
     .settings-link { display:flex; align-items:center; justify-content:space-between; width:100%; margin-top:12px; padding:10px 0 0; border:0; border-top:1px solid var(--line); background:none; color:var(--ink); font:600 13px/1.4 VeiloInter,Inter,sans-serif; cursor:pointer; }
+    .settings-link-label { display:inline-flex; align-items:center; gap:8px; }
+    .settings-icon { display:block; width:16px; height:16px; flex-shrink:0; }
     .settings-link:focus-visible { outline:2px solid var(--focus); outline-offset:3px; }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; } }
   </style>
@@ -80,7 +82,16 @@
       </div>
     </section>
     <div class="foot" id="save-state" aria-live="polite">Settings apply to supported AI sites</div>
-    <button class="settings-link" id="open-settings" type="button">All settings <span aria-hidden="true">↗</span></button>
+    <button class="settings-link" id="open-settings" type="button">
+      <span class="settings-link-label">
+        <svg class="settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9.67 4.14a2.34 2.34 0 0 1 4.66 0 2.34 2.34 0 0 0 3.32 1.91 2.34 2.34 0 0 1 2.33 4.03 2.34 2.34 0 0 0 0 3.84 2.34 2.34 0 0 1-2.33 4.03 2.34 2.34 0 0 0-3.32 1.91 2.34 2.34 0 0 1-4.66 0 2.34 2.34 0 0 0-3.32-1.91 2.34 2.34 0 0 1-2.33-4.03 2.34 2.34 0 0 0 0-3.84 2.34 2.34 0 0 1 2.33-4.03 2.34 2.34 0 0 0 3.32-1.91Z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span>All settings</span>
+      </span>
+      <span aria-hidden="true">↗</span>
+    </button>
   </main>
   <script type="module" src="popup.js"></script>
 </body>
