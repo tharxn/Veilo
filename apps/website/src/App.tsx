@@ -146,7 +146,22 @@ function GetStarted() {
 }
 
 function Footer({ onFeedback }: { onFeedback: () => void }) {
-  return <footer className="site-footer container"><div className="footer-top"><a href="#top" className="brand-link" aria-label="Back to Veilo home"><Brand /></a><p>A little more thought.<br />A little less oversharing.</p><div><a href={GITHUB} target="_blank" rel="noreferrer">GitHub <ArrowUpRight size={14} /></a><button type="button" className="footer-feedback" aria-haspopup="dialog" onClick={onFeedback}>Feedback <ArrowUpRight size={14} /></button><a href="#questions">Privacy & questions <ArrowUpRight size={14} /></a></div></div><div className="footer-bottom"><span>Made for your everyday AI conversations.</span><div className="footer-credit"><span>Open source. Considered by design.</span><span>Made by Tharun</span></div><a href="#top">Back to top <ArrowUpRight size={13} /></a></div></footer>;
+  return <footer className="site-footer container">
+    <div className="footer-top">
+      <a href="#top" className="brand-link" aria-label="Back to Veilo home"><Brand /></a>
+      <p>A little more thought.<br />A little less oversharing.</p>
+      <nav className="footer-links" aria-label="Footer">
+        <a href={GITHUB} target="_blank" rel="noreferrer"><span className="footer-link-tail">GitHub<ArrowUpRight size={14} aria-hidden="true" /></span></a>
+        <button type="button" className="footer-feedback" aria-haspopup="dialog" onClick={onFeedback}><span className="footer-link-tail">Feedback<ArrowUpRight size={14} aria-hidden="true" /></span></button>
+        <a href="#questions">Privacy & <span className="footer-link-tail">questions<ArrowUpRight size={14} aria-hidden="true" /></span></a>
+      </nav>
+    </div>
+    <div className="footer-bottom">
+      <span>Made for your everyday AI conversations.</span>
+      <div className="footer-credit"><span>Open source. Considered by design.</span><span>Made by Tharun</span></div>
+      <a href="#top">Back to <span className="footer-link-tail">top<ArrowUpRight size={13} aria-hidden="true" /></span></a>
+    </div>
+  </footer>;
 }
 
 export default function App() {

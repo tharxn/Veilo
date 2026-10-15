@@ -308,7 +308,6 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 17px;
   width: fit-content;
   min-height: 44px;
   margin: -10px 0;
@@ -355,7 +354,7 @@
   .feedback-actions { gap: 9px; }
   .feedback-actions > button { flex: 1; }
   .feedback-success { padding: 52px 24px 30px; }
-  .site-footer .footer-feedback { gap: 12px; font-size: 13px; }
+  .site-footer .footer-feedback { font-size: 13px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -22,3 +22,7 @@ next-env.d.ts
 .vinext/
 testing/
 learning/
+
+# Local framework-generated editor guidance.
+/AGENTS.md
+/CLAUDE.md
