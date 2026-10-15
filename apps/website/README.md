@@ -47,6 +47,14 @@ For production, verify a sender domain in Resend and use an address on that doma
 
 The visitor's email is required and appears in the feedback body and Reply-To header. Replying in your inbox addresses that visitor. It is a self-reported address, not verified identity. Mail is sent from Veilo's configured sender, rather than impersonating the visitor's address.
 
+## Extension ZIP download
+
+The installation section offers two methods: a ready-to-load ZIP (selected by default) and a command-line source build. The ZIP is served directly from `public/downloads/Veilo-extension-0.2.0.zip` at `/downloads/Veilo-extension-0.2.0.zip`. It contains the compiled extension, bundled OCR files, fonts, icons, licenses, and installation instructions; it does not include the website, environment variables, test samples, or learning material.
+
+Users extract the ZIP to a permanent folder, then use Chrome's **Developer mode → Load unpacked** to select the extracted folder containing `manifest.json`. No Node.js, build, or API key is needed for this method. The CLI method still builds from GitHub and loads `packages/extension/dist`.
+
+When shipping a new extension version, replace the archive with a freshly built, complete extension package and update the versioned download path and size in `src/App.tsx`. Do not use GitHub's **Code → Download ZIP** for the ready-to-load link: that archive contains source, and compiled extension output is ignored in Git. ZIP assets in `public/downloads/` are intentional website downloads, not test fixtures.
+
 ## Main files
 
 - `src/App.tsx`: navigation, landing-page sections, previews, FAQ, and installation instructions.

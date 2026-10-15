@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react';
-import { ArrowDown, ArrowRight, ArrowUpRight, Check, ChevronDown, Code2, FileCode2, FileText, Image, KeyRound, LockKeyhole, Menu, Monitor, MousePointer2, Plus, ScanLine, Settings2, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUpRight, Check, ChevronDown, Code2, Download, FileCode2, FileText, Image, KeyRound, LockKeyhole, Menu, Monitor, MousePointer2, Plus, ScanLine, Settings2, SlidersHorizontal, X } from 'lucide-react';
 import { PromptDemo } from './PromptDemo';
 import { FeedbackModal } from './FeedbackModal';
 
@@ -127,7 +127,7 @@ const faqs = [
   { question: 'Does Veilo use another AI to read my prompts?', answer: 'Text detection uses written rules, context, and format validators. Supported images are read with bundled English Tesseract OCR, then checked with detection rules. Veilo does not need a hosted language model for those checks.' },
   { question: 'Can Veilo remove secrets from an image or file?', answer: 'Veilo currently warns about supported attachments; it does not rewrite files or edit image pixels. When a warning appears, Cancel stops the upload, while Send Anyway shares the original file. Unsupported formats also offer Cancel or Send Anyway without inspection.' },
   { question: 'Will it catch every sensitive detail?', answer: 'No. Patterns can miss unusual values, and OCR can misread small, blurry, handwritten, or non-English text. AI websites can also change their interfaces. Review what you share and check that Veilo reports protection as active.' },
-  { question: 'How can I install Veilo?', answer: 'Veilo is currently available as an unpacked Chrome extension through GitHub. Download the source, install dependencies and build it, then use Load unpacked in Chrome’s extension manager. Follow the setup steps below. It is not yet listed in the Chrome Web Store.' },
+  { question: 'How can I install Veilo?', answer: 'Choose Download ZIP below for a ready-to-use extension, or use the command line to build it from source. Extract the ZIP, open chrome://extensions, enable Developer mode, and use Load unpacked to select the extracted folder containing manifest.json. The ZIP needs no Node.js or build commands. Veilo is not yet listed in the Chrome Web Store.' },
 ];
 
 function Questions() {
@@ -136,13 +136,83 @@ function Questions() {
 }
 
 function GetStarted() {
+  const [method, setMethod] = useState<'zip' | 'cli'>('zip');
   const [copied, setCopied] = useState(false);
   const command = 'git clone https://github.com/tharxn/Veilo.git\ncd Veilo\nnpm install\nnpm run build';
+
   async function copyCommands() {
     try { await navigator.clipboard.writeText(command); setCopied(true); window.setTimeout(() => setCopied(false), 2000); }
     catch { setCopied(false); }
   }
-  return <section className="get-started-section container" id="get-started"><Reveal className="get-started-card"><div className="get-started-copy"><span className="eyebrow"><ChromeIcon size={17} /> Available for Chrome</span><h2>Your next prompt.<br /><span>A little more private.</span></h2><p>Get started with Veilo’s open-source extension.<br />A few setup steps, then back to your ideas.</p><a className="button button-cream" href={`${GITHUB}#try-veilo-in-chrome`} target="_blank" rel="noreferrer"><Github size={18} /> Get Veilo on GitHub <ArrowUpRight size={17} /></a><span className="install-status">Unpacked extension · Chrome Web Store release to come</span></div><div className="install-steps"><div className="install-step"><span>1</span><div><h3>Download and build</h3><p>Install Node.js 18+ and follow the source setup.</p></div></div><div className="command-block"><div><span>Terminal</span><button onClick={copyCommands} aria-label="Copy installation commands">{copied ? <><Check size={13} /> Copied</> : <>Copy <Code2 size={13} /></>}</button></div><pre><code>{command}</code></pre></div><div className="install-step"><span>2</span><div><h3>Load it in Chrome</h3><p>Open <code>chrome://extensions</code>, enable Developer mode, choose Load unpacked, and select <code>packages/extension/dist</code>.</p></div></div><div className="install-step"><span>3</span><div><h3>Open an AI chat</h3><p>Check Veilo’s status, write your prompt, and choose what you share.</p></div></div></div></Reveal></section>;
+
+  return <section className="get-started-section container" id="get-started">
+    <Reveal className="get-started-card">
+      <div className="get-started-copy">
+        <span className="eyebrow"><ChromeIcon size={17} /> Available for Chrome</span>
+        <h2>Your next prompt.<br /><span>A little more private.</span></h2>
+        <p>Choose the ready-to-use ZIP or build from source with the command line. A few setup steps, then back to your ideas.</p>
+        <a className="button button-cream" href={GITHUB} target="_blank" rel="noreferrer"><Github size={18} /> View the source <ArrowUpRight size={17} /></a>
+        <span className="install-status">Unpacked extension · Chrome Web Store release to come</span>
+      </div>
+
+      <div className="install-options">
+        <p className="install-method-label">Choose how to install</p>
+        <div className="install-method-picker" role="group" aria-label="Installation method">
+          <button type="button" aria-pressed={method === 'zip'} aria-controls="install-instructions" onClick={() => setMethod('zip')}>
+            <Download size={17} aria-hidden="true" /><span>Download ZIP</span>
+          </button>
+          <button type="button" aria-pressed={method === 'cli'} aria-controls="install-instructions" onClick={() => setMethod('cli')}>
+            <Code2 size={17} aria-hidden="true" /><span>Command line</span>
+          </button>
+        </div>
+
+        <div id="install-instructions" className="install-instructions">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={method} className="install-steps" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: .15 }}>
+              {method === 'zip' ? <>
+                <div className="install-step">
+                  <span>1</span>
+                  <div>
+                    <h3>Download and extract</h3>
+                    <p>Extract the ZIP into a folder you’ll keep, such as Documents/Veilo. No Node.js, build commands, or API key needed.</p>
+                    <div className="zip-download-action">
+                      <a className="button button-cream zip-download" href="/downloads/Veilo-extension-0.2.0.zip" download="Veilo-extension-0.2.0.zip"><Download size={18} aria-hidden="true" /><span>Download Veilo ZIP</span></a>
+                      <span className="zip-download-meta">Version 0.2.0 · 4.7 MB</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="install-step">
+                  <span>2</span>
+                  <div><h3>Load it in Chrome</h3><p>Open <code>chrome://extensions</code> and turn on <strong>Developer mode</strong>. Click <strong>Load unpacked</strong> and select the extracted folder containing <code>manifest.json</code>.</p></div>
+                </div>
+                <div className="install-step">
+                  <span>3</span>
+                  <div><h3>Make yourself at home</h3><p>Pin Veilo, check that protection is on, and refresh any open AI chat tabs. Keep the extracted folder in place while Veilo is installed.</p></div>
+                </div>
+              </> : <>
+                <div className="install-step">
+                  <span>1</span>
+                  <div><h3>Clone and build</h3><p>Install Git and Node.js 18 or newer, then run these commands in your terminal.</p></div>
+                </div>
+                <div className="command-block">
+                  <div><span>Terminal</span><button type="button" onClick={copyCommands} aria-label="Copy installation commands"><span role="status">{copied ? <><Check size={13} /> Copied</> : <>Copy <Code2 size={13} /></>}</span></button></div>
+                  <pre><code>{command}</code></pre>
+                </div>
+                <div className="install-step">
+                  <span>2</span>
+                  <div><h3>Load it in Chrome</h3><p>Open <code>chrome://extensions</code>, turn on <strong>Developer mode</strong>, and click <strong>Load unpacked</strong>. Select <code>packages/extension/dist</code> inside the cloned project.</p></div>
+                </div>
+                <div className="install-step">
+                  <span>3</span>
+                  <div><h3>Open an AI chat</h3><p>Pin Veilo, check that protection is on, and refresh any open AI chat tabs. After rebuilding, reload Veilo in Chrome’s extension manager too.</p></div>
+                </div>
+              </>}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+    </Reveal>
+  </section>;
 }
 
 function Footer({ onFeedback }: { onFeedback: () => void }) {

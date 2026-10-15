@@ -34,3 +34,29 @@ html,body{min-width:0}.container{min-width:0}
 .footer-link-tail{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;vertical-align:baseline}
 .footer-link-tail>svg{flex:none}
 @media(max-width:300px){.footer-top{grid-template-columns:1fr;gap:20px}.footer-top>p{grid-row:auto}.footer-links{grid-column:1;grid-row:auto;justify-self:start}}
+
+/* Installation choices share the extension's warm, solid palette. */
+.install-options{min-width:0}
+.install-method-label{font-size:15px;font-weight:550;color:#d7c6ad;margin-bottom:12px}
+.install-method-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:5px;border:1px solid #72614c;border-radius:8px;background:#1f1812;margin-bottom:26px}
+.install-method-picker>button{display:flex;align-items:center;justify-content:center;gap:9px;min-width:0;min-height:46px;padding:10px 9px;border-radius:4px;font-size:14px;line-height:1.5;font-weight:550;color:#c7b9a3;transition:background .18s ease,color .18s ease}
+.install-method-picker>button[aria-pressed="true"]{background:var(--bg);color:var(--ink)}
+.install-method-picker>button[aria-pressed="false"]:hover{background:#3a2f24;color:var(--bg)}
+.install-method-picker>button:focus-visible{outline-color:#ee9a73;outline-offset:2px}
+.install-instructions{min-height:440px}
+.install-options .install-step h3{font-size:17px;line-height:1.5}
+.install-options .install-step p{font-size:15px;line-height:1.85;margin-top:7px}
+.install-options .install-step code{font-size:14px}
+.install-options .install-step>span{width:24px;height:24px;font-size:13px;margin-top:1px}
+.install-options .install-step+.install-step{margin-top:25px}
+.install-options .install-step>div{min-width:0}
+.install-options .install-step strong{color:#f3ebdb;font-weight:550}
+.zip-download-action{display:flex;flex-direction:column;align-items:flex-start;gap:9px;margin-top:17px}
+.zip-download-action>.zip-download{min-height:46px;gap:9px;font-size:15px;padding:12px 17px;max-width:100%}
+.zip-download-meta{font-size:13px;color:#c7b9a3;line-height:1.6}
+.install-options .command-block{margin:16px 0 24px 38px}
+.install-options .command-block pre{font-size:13px}
+.install-options .command-block>div>button>span{display:inline-flex;align-items:center;gap:6px}
+@media(max-width:1100px) and (min-width:761px){.get-started-card{grid-template-columns:.8fr 1fr;gap:35px;padding:38px}.install-method-picker>button{font-size:13px;gap:6px}.install-options .command-block{margin-left:0}}
+@media(max-width:760px){.install-instructions{min-height:0}.install-options .install-step h3{font-size:17px}.install-options .install-step p{font-size:15px}.install-options .command-block{margin-left:38px}.get-started-card{gap:30px}}
+@media(max-width:390px){.install-method-picker>button{flex-direction:column;gap:5px;font-size:13px;padding:10px 5px}.install-options .command-block{margin-left:0}.install-options .install-step{gap:11px}.zip-download-action>.zip-download{font-size:14px;padding:11px 12px}}
