@@ -100,9 +100,14 @@ npm run eval        # Run detector evaluation
 
 The E2E tests use Playwright. If its Chromium browser is not installed yet, run `npx playwright install chromium` first.
 
+## Website
+
+The React and TypeScript website lives in [`apps/website`](apps/website). It uses Next.js and can be deployed independently on Vercel, with a server-side feedback endpoint. See the [website setup and deployment guide](apps/website/README.md). In Vercel, select `apps/website` as the Root Directory. Keep real credentials in local environment files or Vercel environment settings.
+
 ## Project layout
 
 ```text
+apps/website/          Next.js website and TypeScript feedback endpoint
 packages/engine/       Text detection rules, validators, and placeholders
 packages/extension/    Chrome extension, site adapters, UI, OCR, upload guard
 packages/eval/         Detector evaluation tools
